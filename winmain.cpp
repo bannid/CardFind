@@ -13,10 +13,8 @@
 #include "debug.h"
 #include "utils.h"
 #include "arena.h"
-#include "game/game.h"
 
 #include "win32/win32_file.h"
-#include "win32/win32_dll.h"
 #include "win32/win32_memory.h"
 #include "opengl/shader.h"
 #include "opengl/model.h"
@@ -24,6 +22,9 @@
 #include "transform.h"
 #include "input.h"
 #include "orbital_camera.h"
+
+#include "game/game.h"
+#include "win32/win32_dll.h"
 
 #include "utils.cpp"
 #include "print_utils.cpp"
@@ -125,29 +126,8 @@ void FrameBufferResizeCallback(GLFWwindow *Window, int32 Width, int32 Height)
     Global_Resized = true;
 }
 
-struct entity
-{
-    transform Transform;
-    u32 TextureID;
-    gl_model Model;
-};
-
-inline 
-void InitEntity(entity* Entity,
-                glm::vec3 Position,
-                glm::vec3 Scale,
-                u32 TextureID,
-                gl_model Model)
-{
-    InitTransform(&Entity->Transform);
-    Entity->Transform.Position = Position;
-    Entity->Transform.Scale = Scale;
-    Entity->TextureID = TextureID;
-    Entity->Model = Model;
-}
-
 inline
-void DrawEntity(entity* Entity, gl_shader_program Shader)
+void DrawEntity(game_entity* Entity, gl_shader_program Shader)
 {
     
     glm::mat4 ModelMat;
@@ -194,13 +174,13 @@ int32 CALLBACK WinMain(HINSTANCE instance,
     // NOTE(Banni): Input callbacks
     glfwSetScrollCallback(Window, GlfwScrollCallback);
     
-    entity Board;
-    InitEntity(&Board, glm::vec3(0), glm::vec3(20,.1,10), BoardTexture, Cube);
-    
-    entity Card;
-    InitEntity(&Card, glm::vec3(0,.1, 0), glm::vec3(2,.01,3), CardFindTexture, Cube);
-    
     win32_game_code GameCode = Win32LoadGameDLL(false);
+    
+    graphics_api Api;
+    Api.LoadTexture = &LoadTexture;
+    Api.LoadCube = &GL_LoadCubeToGPU;
+    game_state* GameState = (game_state*)GetMemory(&MainArena, sizeof(game_state));
+    ZeroMemory(GameState, sizeof(game_state));
     
     while(!glfwWindowShouldClose(Window))
     {
@@ -209,6 +189,7 @@ int32 CALLBACK WinMain(HINSTANCE instance,
         {
             Win32UnloadGameDLL(&GameCode);
             GameCode = Win32LoadGameDLL(true);
+            GameState->IsReloaded = true;
         }
         
         // NOTE(Banni): Timings update
@@ -224,7 +205,9 @@ int32 CALLBACK WinMain(HINSTANCE instance,
         Update(&Camera, &Global_Input, DeltaTime);
         
         glm::vec3 FromGameDll;
-        GameCode.GameUpdate(DeltaTime, &FromGameDll);
+        GameCode.GameUpdate((void*)GameState,
+                            &Api,
+                            DeltaTime);
         
         if(Global_Resized)
         {
@@ -245,7 +228,6 @@ int32 CALLBACK WinMain(HINSTANCE instance,
         
         // NOTE(Banni): Render
         glClearColor(0,0,0,0);
-        glClearColor(FromGameDll.x, FromGameDll.y, FromGameDll.z, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(MainShader.ID);
         glUniformMatrix4fv(MainShader.ProjectionLocation,
@@ -257,8 +239,10 @@ int32 CALLBACK WinMain(HINSTANCE instance,
                            1,
                            GL_FALSE,
                            (f32*)&ViewMat);
-        DrawEntity(&Board, MainShader);
-        DrawEntity(&Card, MainShader);
+        for(int32 i = 0; i < GameState->NumberOfItems; i++)
+        {
+            DrawEntity(GameState->Items + i, MainShader);
+        }
         // NOTE(Banni): Clear mouse's scroll values
         Global_Input.Mouse.ScrollYOffset = 0;
         
