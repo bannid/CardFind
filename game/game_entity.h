@@ -3,11 +3,19 @@
 #ifndef GAME_ENTITY_H
 #define GAME_ENTITY_H
 
+enum game_entity_type
+{
+    Game_Entity_Type_Board,
+    Game_Entity_Type_DummyCard,
+    Game_Entity_Type_TargetCard
+};
+
 struct game_entity
 {
     transform Transform;
-    u32 TextureID;
-    gl_model Model;
+    game_entity_type Type;
+    f32 AnimationTime;
+    b32 AnimationActive;
 };
 
 #endif //GAME_ENTITY_H

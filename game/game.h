@@ -3,10 +3,12 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "..\types.h"
+#include "..\utils.h"
 #include "..\transform.h"
 #include "..\opengl/shader.h"
 #include "..\opengl/model.h"
@@ -34,14 +36,13 @@ struct graphics_api
 
 struct game_state
 {
-    // NOTE(Banni): Assets
+    std::vector<game_entity> Items;
+    game_entity Board;
     
-    u32 BoardTexture;
-    u32 CardFindTexture;
-    gl_model Cube;
+    game_entity CardOne;
+    game_entity CardTwo;
+    game_entity CardThree;
     
-    game_entity Items[10];
-    u32 NumberOfItems;
     b32 IsInitialized;
     b32 IsReloaded;
 };

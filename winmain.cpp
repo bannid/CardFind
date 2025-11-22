@@ -126,18 +126,6 @@ void FrameBufferResizeCallback(GLFWwindow *Window, int32 Width, int32 Height)
     Global_Resized = true;
 }
 
-inline
-void DrawEntity(game_entity* Entity, gl_shader_program Shader)
-{
-    
-    glm::mat4 ModelMat;
-    ModelMat = TransformToMat4(&Entity->Transform);
-    glm::vec3 White = glm::vec3(1);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, Entity->TextureID);
-    GL_DrawModel(&Entity->Model, &Shader, (f32*)&ModelMat, (f32*)&White);
-}
-
 int32 CALLBACK WinMain(HINSTANCE instance,
                        HINSTANCE prevInstance,
                        LPSTR commandLine,
@@ -157,6 +145,7 @@ int32 CALLBACK WinMain(HINSTANCE instance,
     gl_model Cube = GL_LoadCubeToGPU();
     u32 BoardTexture = LoadTexture("../assets/textures/wood.png", 4, false);
     u32 CardFindTexture = LoadTexture("../assets/textures/cardback.png", 4, true);
+    u32 TargetCard = LoadTexture("../assets/textures/targetCard.png", 4, true);
     gl_shader_program MainShader = GL_LoadShaderFromFile("../shaders/main.vs.c",
                                                          "../shaders/main.fs.c",
                                                          ScratchArena);
@@ -239,10 +228,36 @@ int32 CALLBACK WinMain(HINSTANCE instance,
                            1,
                            GL_FALSE,
                            (f32*)&ViewMat);
-        for(int32 i = 0; i < GameState->NumberOfItems; i++)
+        
+        for(int32 i = 0; i < GameState->Items.size(); i++)
         {
-            DrawEntity(GameState->Items + i, MainShader);
+            game_entity* Entity = &GameState->Items[i];
+            glm::mat4 ModelMat;
+            ModelMat = TransformToMat4(&Entity->Transform);
+            glm::vec3 White = glm::vec3(1);
+            glActiveTexture(GL_TEXTURE0);
+            switch(Entity->Type)
+            {
+                case Game_Entity_Type_Board:
+                {
+                    glBindTexture(GL_TEXTURE_2D, BoardTexture);
+                }break;
+                
+                case Game_Entity_Type_DummyCard:
+                {
+                    glBindTexture(GL_TEXTURE_2D, CardFindTexture);
+                }break;
+                
+                case Game_Entity_Type_TargetCard:
+                {
+                    glBindTexture(GL_TEXTURE_2D, TargetCard);
+                }break;
+            }
+            
+            
+            GL_DrawModel(&Cube, &MainShader, (f32*)&ModelMat, (f32*)&White);
         }
+        
         // NOTE(Banni): Clear mouse's scroll values
         Global_Input.Mouse.ScrollYOffset = 0;
         
